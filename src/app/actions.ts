@@ -75,6 +75,7 @@ export async function explainMove(fen: string, move: string, evaluation: number)
     try {
         const prompt = `你是一位国际象棋大师。当前棋局 FEN 为 ${fen}。Stockfish 推荐的走法是 ${move}，评价分数为 ${evaluation}。请用 3-5 句话解释：1. 这一步的直接威胁是什么？2. 它如何改善了己方的结构或空间？3. 对方可能的后续手段。`;
 
+        console.log(prompt);
         const output = await replicate.run("google/gemini-3-pro", {
             input: {
                 prompt: prompt,

@@ -7,6 +7,7 @@ import { Chessboard, COLOR, MOVE_INPUT_MODE, INPUT_EVENT_TYPE } from 'cm-chessbo
 import 'cm-chessboard/styles/cm-chessboard.css';
 import { ImageUpload } from '@/components/image-upload';
 import { AnalysisPanel } from '@/components/analysis-panel';
+import { BestMovePanel } from '@/components/best-move-panel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,8 @@ export default function Home() {
     const [fenStatusState, setFenStatusState] = useState<FenStatusState>('idle');
     const [analysisFen, setAnalysisFen] = useState<string | null>(null);
     const [analysisRequestId, setAnalysisRequestId] = useState(0);
+    const [bestMoveFen, setBestMoveFen] = useState<string | null>(null);
+    const [bestMoveRequestId, setBestMoveRequestId] = useState(0);
     const [promotion, setPromotion] = useState('q');
 
     const boardElementRef = useRef<HTMLDivElement | null>(null);
@@ -154,6 +157,8 @@ export default function Home() {
                     setFenStatus('', 'idle');
                     setAnalysisFen(null);
                     setAnalysisRequestId(0);
+                    setBestMoveFen(null);
+                    setBestMoveRequestId(0);
 
                     if (checkGameState()) {
                         return true;
@@ -172,6 +177,8 @@ export default function Home() {
                         syncFenOutput();
                         setAnalysisFen(null);
                         setAnalysisRequestId(0);
+                        setBestMoveFen(null);
+                        setBestMoveRequestId(0);
 
                         if (checkGameState()) {
                             return true;
@@ -257,6 +264,8 @@ export default function Home() {
             setFenStatus('棋盘已加载。', 'ok');
             setAnalysisFen(null);
             setAnalysisRequestId(0);
+            setBestMoveFen(null);
+            setBestMoveRequestId(0);
 
             if (options?.saveToHistory) {
                 saveToHistoryRef.current(nextFen);
@@ -313,6 +322,12 @@ export default function Home() {
         if (fenError) return;
         setAnalysisFen(fen);
         setAnalysisRequestId((prev) => prev + 1);
+    };
+
+    const handleBestMove = () => {
+        if (fenError) return;
+        setBestMoveFen(fen);
+        setBestMoveRequestId((prev) => prev + 1);
     };
 
     const handleFenInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -477,19 +492,32 @@ export default function Home() {
                                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                                     局面分析
                                 </h2>
-                                <Button
-                                    variant="secondary"
-                                    onClick={handleAnalyze}
-                                    disabled={!!fenError}
-                                >
-                                    {analysisRequestId > 0 ? '重新分析' : '开始分析'}
-                                </Button>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="secondary"
+                                        onClick={handleBestMove}
+                                        disabled={!!fenError}
+                                    >
+                                        最佳走法
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={handleAnalyze}
+                                        disabled={!!fenError}
+                                    >
+                                        {analysisRequestId > 0 ? '重新点评' : '大师点评'}
+                                    </Button>
+                                </div>
                             </div>
                             {fenError && (
                                 <p className="text-xs text-red-500">
-                                    请先输入有效 FEN，再进行分析。
+                                    请先输入有效 FEN，再进行最佳走法或点评。
                                 </p>
                             )}
+                            <BestMovePanel
+                                fen={bestMoveFen}
+                                requestId={bestMoveRequestId}
+                            />
                             <AnalysisPanel fen={analysisFen} requestId={analysisRequestId} />
                         </section>
                     </section>

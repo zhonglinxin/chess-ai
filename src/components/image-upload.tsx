@@ -68,9 +68,6 @@ export function ImageUpload({ onImageSelected, isAnalyzing = false }: ImageUploa
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center gap-4 text-gray-500">
-                            <div className="p-4 bg-white dark:bg-gray-800 rounded-full shadow-sm">
-                                <Camera className="w-8 h-8 opacity-70" />
-                            </div>
                             <p className="text-center text-sm font-medium">
                                 点击下方按钮拍摄或上传棋盘照片
                             </p>
