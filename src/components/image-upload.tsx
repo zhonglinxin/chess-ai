@@ -39,7 +39,7 @@ export function ImageUpload({ onImageSelected, isAnalyzing = false }: ImageUploa
     return (
         <div className="w-full max-w-md mx-auto p-4">
             <Card className="border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                <CardContent className="flex flex-col items-center justify-center p-6 min-h-[300px] gap-4">
+                <CardContent className="flex flex-col items-center justify-center gap-4">
                     <input
                         type="file"
                         accept="image/*"

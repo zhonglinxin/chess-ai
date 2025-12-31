@@ -1,36 +1,30 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Chessboard } from 'react-chessboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { analyzePosition, explainMove, StockfishResponse } from '@/app/actions';
 import { Loader2, Lightbulb, Trophy } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AnalysisPanelProps {
-    fen: string;
+    fen: string | null;
+    requestId: number;
 }
 
-export function AnalysisPanel({ fen }: AnalysisPanelProps) {
+export function AnalysisPanel({ fen, requestId }: AnalysisPanelProps) {
     const [analysis, setAnalysis] = useState<StockfishResponse | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [explanation, setExplanation] = useState<string>('');
     const [isExplaining, setIsExplaining] = useState(false);
-    const [boardWidth, setBoardWidth] = useState(300);
 
     useEffect(() => {
-        // Responsive board width
-        const updateWidth = () => {
-            const width = Math.min(window.innerWidth - 64, 400);
-            setBoardWidth(width);
-        };
-        updateWidth();
-        window.addEventListener('resize', updateWidth);
-        return () => window.removeEventListener('resize', updateWidth);
-    }, []);
-
-    useEffect(() => {
-        if (!fen) return;
+        if (!fen || requestId === 0) {
+            setAnalysis(null);
+            setExplanation('');
+            setIsAnalyzing(false);
+            setIsExplaining(false);
+            return;
+        }
 
         const runAnalysis = async () => {
             setIsAnalyzing(true);
@@ -62,53 +56,54 @@ export function AnalysisPanel({ fen }: AnalysisPanelProps) {
         };
 
         runAnalysis();
-    }, [fen]);
-
-    // Helper to parse move string "e2e4" -> ["e2", "e4"]
-    const getMoveArrows = () => {
-        if (!analysis?.lan) return [];
-        const from = analysis.lan.substring(0, 2) as any;
-        const to = analysis.lan.substring(2, 4) as any;
-        return [[from, to]];
-    };
+    }, [fen, requestId]);
 
     return (
-        <div className="space-y-6 w-full max-w-md mx-auto">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Trophy className="w-5 h-5 text-yellow-500" />
-                        局面分析
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                    <div className="mb-4">
-                        <Chessboard
-                            position={fen}
-                            boardWidth={boardWidth}
-                            customArrows={analysis ? getMoveArrows() : []}
-                            arePiecesDraggable={false}
-                        />
-                    </div>
-
-                    {isAnalyzing ? (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            正在计算最佳走法...
-                        </div>
-                    ) : analysis ? (
-                        <div className="text-center w-full">
-                            <div className="mb-2 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                                <span className="font-bold mr-2">最佳走法:</span>
-                                <span className="text-blue-600 font-mono text-lg">{analysis.san || analysis.lan}</span>
-                                <span className={`ml-4 font-mono ${analysis.eval > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {analysis.eval > 0 ? '+' : ''}{analysis.eval}
-                                </span>
+        <div className="space-y-6 w-full">
+            {!fen || requestId === 0 ? (
+                <Card className="border-dashed">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-muted-foreground">
+                            <Trophy className="w-5 h-5" />
+                            暂无分析
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-muted-foreground">
+                        准备好局面后点击“开始分析”，将在这里展示最佳走法与大师点评。
+                    </CardContent>
+                </Card>
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Trophy className="w-5 h-5 text-yellow-500" />
+                            局面分析
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {isAnalyzing ? (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                正在计算最佳走法...
                             </div>
-                        </div>
-                    ) : null}
-                </CardContent>
-            </Card>
+                        ) : analysis ? (
+                            <div className="text-center w-full">
+                                <div className="mb-2 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                                    <span className="font-bold mr-2">最佳走法:</span>
+                                    <span className="text-blue-600 font-mono text-lg">{analysis.san || analysis.lan}</span>
+                                    <span className={`ml-4 font-mono ${analysis.eval > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {analysis.eval > 0 ? '+' : ''}{analysis.eval}
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-sm text-muted-foreground">
+                                暂无分析结果，请稍后重试。
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             {(isExplaining || explanation) && (
                 <Card>

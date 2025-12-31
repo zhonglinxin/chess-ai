@@ -40,6 +40,7 @@ export type StockfishResponse = {
     text: string;
     eval: number;
     move: string;
+    lan: string; // Long algebraic notation
     fen: string;
     depth: number;
     winChance: number;
