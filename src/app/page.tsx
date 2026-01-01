@@ -8,6 +8,7 @@ import 'cm-chessboard/styles/cm-chessboard.css';
 import { ImageUpload } from '@/components/image-upload';
 import { AnalysisPanel } from '@/components/analysis-panel';
 import { BestMovePanel } from '@/components/best-move-panel';
+import { StockfishLinesPanel } from '@/components/stockfish-lines-panel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -427,8 +428,8 @@ export default function Home() {
         const tipOffset = 4;
         const adjustedEndX = endX - (dx / distance) * tipOffset;
         const adjustedEndY = endY - (dy / distance) * tipOffset;
-        const thickness = baseSize * 0.4;
-        const headSize = thickness * 1.2;
+        const thickness = baseSize * 0.2;
+        const headSize = thickness * 2.4;
         const headPoints = `0 0, ${headSize} ${headSize / 2}, 0 ${headSize}`;
 
         return {
@@ -631,7 +632,7 @@ export default function Home() {
                             </div>
                             {fenError && (
                                 <p className="text-xs text-red-500">
-                                    请先输入有效 FEN，再进行最佳走法或点评。
+                                    请先输入有效 FEN，再进行引擎分析、最佳走法或点评。
                                 </p>
                             )}
                             <BestMovePanel
@@ -640,6 +641,12 @@ export default function Home() {
                                 onBestMove={setBestMoveArrow}
                             />
                             <AnalysisPanel fen={analysisFen} requestId={analysisRequestId} />
+
+                            <StockfishLinesPanel
+                                fen={fen}
+                                disabled={!!fenError}
+                                onMoveSelect={setBestMoveArrow}
+                            />
                         </section>
                     </section>
                 </main>
