@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Chess, validateFen as validateFenString } from 'chess.js';
 import type { Move, Square } from 'chess.js';
 import { Chessboard, COLOR, MOVE_INPUT_MODE, INPUT_EVENT_TYPE } from 'cm-chessboard/src/cm-chessboard/Chessboard.js';
@@ -28,11 +28,28 @@ interface ChessMoveEvent {
     squareTo?: string;
 }
 
+type BoardMetrics = {
+    width: number;
+    height: number;
+    borderSize: number;
+    squareWidth: number;
+    squareHeight: number;
+};
+
 const DEFAULT_FEN = new Chess().fen();
 const SPRITE_URL = '/chessboard-sprite.svg';
 
 const random = (min: number, max: number): number =>
     Math.floor(Math.random() * (max - min + 1)) + min;
+
+const getSquareCenter = (square: Square, metrics: BoardMetrics) => {
+    const fileIndex = square.charCodeAt(0) - 97;
+    const rankIndex = Number(square[1]) - 1;
+    const x = metrics.borderSize + (fileIndex + 0.5) * metrics.squareWidth;
+    const y = metrics.borderSize + (7 - rankIndex + 0.5) * metrics.squareHeight;
+
+    return { x, y };
+};
 
 export default function Home() {
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -46,6 +63,8 @@ export default function Home() {
     const [analysisRequestId, setAnalysisRequestId] = useState(0);
     const [bestMoveFen, setBestMoveFen] = useState<string | null>(null);
     const [bestMoveRequestId, setBestMoveRequestId] = useState(0);
+    const [bestMoveArrow, setBestMoveArrow] = useState<{ from: Square; to: Square } | null>(null);
+    const [boardMetrics, setBoardMetrics] = useState<BoardMetrics | null>(null);
     const [promotion, setPromotion] = useState('q');
 
     const boardElementRef = useRef<HTMLDivElement | null>(null);
@@ -159,6 +178,7 @@ export default function Home() {
                     setAnalysisRequestId(0);
                     setBestMoveFen(null);
                     setBestMoveRequestId(0);
+                    setBestMoveArrow(null);
 
                     if (checkGameState()) {
                         return true;
@@ -179,6 +199,7 @@ export default function Home() {
                         setAnalysisRequestId(0);
                         setBestMoveFen(null);
                         setBestMoveRequestId(0);
+                        setBestMoveArrow(null);
 
                         if (checkGameState()) {
                             return true;
@@ -229,6 +250,35 @@ export default function Home() {
         };
     }, [handleMove, syncFenOutput]);
 
+    useEffect(() => {
+        const element = boardElementRef.current;
+        if (!element) return;
+
+        const updateMetrics = () => {
+            const width = element.offsetWidth;
+            const height = element.offsetHeight;
+            if (!width || !height) return;
+
+            const borderSize = width / 320;
+            const innerWidth = width - 2 * borderSize;
+            const innerHeight = height - 2 * borderSize;
+
+            setBoardMetrics({
+                width,
+                height,
+                borderSize,
+                squareWidth: innerWidth / 8,
+                squareHeight: innerHeight / 8,
+            });
+        };
+
+        updateMetrics();
+        const observer = new ResizeObserver(() => updateMetrics());
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, []);
+
     const applyFen = useCallback(
         (value: string, options?: { saveToHistory?: boolean }) => {
             const normalized = normalizeFenInput(value);
@@ -266,6 +316,7 @@ export default function Home() {
             setAnalysisRequestId(0);
             setBestMoveFen(null);
             setBestMoveRequestId(0);
+            setBestMoveArrow(null);
 
             if (options?.saveToHistory) {
                 saveToHistoryRef.current(nextFen);
@@ -358,6 +409,39 @@ export default function Home() {
                 ? 'text-emerald-600'
                 : 'text-muted-foreground';
 
+    const bestMoveArrowSpec = useMemo(() => {
+        if (!bestMoveArrow || !boardMetrics) return null;
+        const from = getSquareCenter(bestMoveArrow.from, boardMetrics);
+        const to = getSquareCenter(bestMoveArrow.to, boardMetrics);
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const distance = Math.hypot(dx, dy);
+        if (!distance) return null;
+
+        const baseSize = Math.min(boardMetrics.squareWidth, boardMetrics.squareHeight);
+        const inset = baseSize * 0.25;
+        const startX = from.x + (dx / distance) * inset;
+        const startY = from.y + (dy / distance) * inset;
+        const endX = to.x - (dx / distance) * inset;
+        const endY = to.y - (dy / distance) * inset;
+        const tipOffset = 4;
+        const adjustedEndX = endX - (dx / distance) * tipOffset;
+        const adjustedEndY = endY - (dy / distance) * tipOffset;
+        const thickness = baseSize * 0.4;
+        const headSize = thickness * 1.2;
+        const headPoints = `0 0, ${headSize} ${headSize / 2}, 0 ${headSize}`;
+
+        return {
+            startX,
+            startY,
+            endX: adjustedEndX,
+            endY: adjustedEndY,
+            thickness,
+            headSize,
+            headPoints,
+        };
+    }, [bestMoveArrow, boardMetrics]);
+
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
             <div className="mx-auto max-w-6xl px-4 pb-16">
@@ -379,7 +463,43 @@ export default function Home() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div ref={boardElementRef} className="chessboard w-full" />
+                                <div className="relative">
+                                    <div ref={boardElementRef} className="chessboard w-full" />
+                                    {bestMoveArrowSpec && boardMetrics && (
+                                        <svg
+                                            className="pointer-events-none absolute inset-0"
+                                            viewBox={`0 0 ${boardMetrics.width} ${boardMetrics.height}`}
+                                        >
+                                            <defs>
+                                                <marker
+                                                    id="best-move-arrow"
+                                                    markerWidth={bestMoveArrowSpec.headSize}
+                                                    markerHeight={bestMoveArrowSpec.headSize}
+                                                    refX={0}
+                                                    refY={bestMoveArrowSpec.headSize / 2}
+                                                    orient="auto"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <polygon
+                                                        points={bestMoveArrowSpec.headPoints}
+                                                        fill="rgba(128, 128, 128, 0.55)"
+                                                    />
+                                                </marker>
+                                            </defs>
+                                            <line
+                                                x1={bestMoveArrowSpec.startX}
+                                                y1={bestMoveArrowSpec.startY}
+                                                x2={bestMoveArrowSpec.endX}
+                                                y2={bestMoveArrowSpec.endY}
+                                                stroke="rgba(128, 128, 128, 0.55)"
+                                                strokeWidth={bestMoveArrowSpec.thickness}
+                                                strokeLinecap="butt"
+                                                strokeLinejoin="round"
+                                                markerEnd="url(#best-move-arrow)"
+                                            />
+                                        </svg>
+                                    )}
+                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="fen-input">FEN</Label>
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -517,6 +637,7 @@ export default function Home() {
                             <BestMovePanel
                                 fen={bestMoveFen}
                                 requestId={bestMoveRequestId}
+                                onBestMove={setBestMoveArrow}
                             />
                             <AnalysisPanel fen={analysisFen} requestId={analysisRequestId} />
                         </section>

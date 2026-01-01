@@ -4,13 +4,28 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { analyzePosition, StockfishResponse } from '@/app/actions';
 import { Loader2, Target } from 'lucide-react';
+import type { Square } from 'chess.js';
 
 interface BestMovePanelProps {
     fen: string | null;
     requestId: number;
+    onBestMove?: (move: { from: Square; to: Square } | null) => void;
 }
 
-export function BestMovePanel({ fen, requestId }: BestMovePanelProps) {
+const parseBestMoveSquares = (analysis: StockfishResponse): { from: Square; to: Square } | null => {
+    const raw = analysis.lan || analysis.move || '';
+    const match = raw.match(/([a-h][1-8])([a-h][1-8])/i);
+    if (!match) {
+        return null;
+    }
+
+    return {
+        from: match[1].toLowerCase() as Square,
+        to: match[2].toLowerCase() as Square,
+    };
+};
+
+export function BestMovePanel({ fen, requestId, onBestMove }: BestMovePanelProps) {
     const [analysis, setAnalysis] = useState<StockfishResponse | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -39,6 +54,16 @@ export function BestMovePanel({ fen, requestId }: BestMovePanelProps) {
 
         runAnalysis();
     }, [fen, requestId]);
+
+    useEffect(() => {
+        if (!onBestMove) return;
+        if (!analysis) {
+            onBestMove(null);
+            return;
+        }
+
+        onBestMove(parseBestMoveSquares(analysis));
+    }, [analysis, onBestMove]);
 
     return (
         <div className="w-full">
